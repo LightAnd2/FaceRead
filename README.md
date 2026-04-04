@@ -2,8 +2,6 @@
 
 Real-time emotion detection and gender recognition straight from your webcam — no account, no cloud, runs entirely in your browser.
 
-![idle state](https://i.imgur.com/placeholder.png)
-
 ---
 
 ## What it does
