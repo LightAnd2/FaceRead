@@ -8,7 +8,7 @@ backend/*.pyc
 # Node
 frontend/node_modules/
 
-# Claude Code internals
+# Local tool state
 .claude/
 
 # Misc
