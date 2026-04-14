@@ -1,4 +1,4 @@
-# Emotion Recognizer
+# FaceRead
 
 Real-time emotion detection and gender recognition straight from your webcam — no account, no cloud, runs entirely in your browser.
 
@@ -6,30 +6,34 @@ Real-time emotion detection and gender recognition straight from your webcam —
 
 ## What it does
 
-Point your camera at a face and the app will:
+Point your camera at a face and it will:
 
 - Detect the dominant emotion (happy, sad, angry, surprised, neutral, fear, disgust) with confidence scores for all seven
-- Guess the gender and confidence
-- Draw a labeled bounding box around each face
+- Predict gender with a confidence percentage
+- Draw a labeled bounding box around each detected face
 - Handle multiple faces at once
 
-Everything runs client-side using [face-api.js](https://github.com/justadudewhohacks/face-api.js) — no data ever leaves your machine.
+Everything runs client-side — no data ever leaves your machine.
 
 ---
 
-## Stack
+## How it's built
 
-| Layer | Tech |
-|---|---|
-| Frontend | React + Vite |
-| ML | face-api.js (TinyFaceDetector + FaceExpressionNet + AgeGenderNet) |
-| Optional backend | Python + Flask + DeepFace (higher accuracy, not required) |
+The frontend is **React + Vite**. When you hit Start Camera, it accesses your webcam via the browser's `getUserMedia` API and feeds each frame into **face-api.js**, a JavaScript ML library that runs three neural networks directly in the browser using WebGL:
+
+- **TinyFaceDetector** — finds faces in the frame
+- **FaceExpressionNet** — classifies the expression into 7 emotions
+- **AgeGenderNet** — estimates gender and age
+
+Because everything runs in-browser, there's no server involved and no latency from network round-trips. Detection runs at roughly 15–30fps depending on your hardware.
+
+The repo also includes an optional **Python + Flask + DeepFace** backend that uses heavier models for higher accuracy at the cost of ~300–500ms per frame. The frontend proxies `/analyze` to it automatically if you have it running.
 
 ---
 
-## Getting started
+## Run the app
 
-**You only need Node to run this.** The Python backend is optional.
+You just need Node installed.
 
 ```bash
 cd frontend
@@ -37,13 +41,11 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000), hit **Start Camera**, and allow webcam access. Models load in a couple seconds on first run (they're cached after that).
+Open [http://localhost:3000](http://localhost:3000), hit **Start Camera**, and allow webcam access. The models (~1MB) load in a couple seconds on first run and are cached after that.
 
 ---
 
 ## Optional: Python backend
-
-The repo also includes a Flask + DeepFace backend that uses heavier models and tends to be more accurate, at the cost of ~300–500ms per frame instead of real-time.
 
 ```bash
 cd backend
@@ -53,39 +55,10 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Runs on port 5001. The frontend proxies `/analyze` there automatically when the Vite dev server is running — just swap `WebcamFeed.jsx` back to the fetch-based version if you want to use it.
-
-Or use the convenience script to run both at once:
-
-```bash
-./start.sh
-```
-
----
-
-## Project structure
-
-```
-EmotionRecognizer/
-├── frontend/
-│   ├── public/models/        # face-api.js model weights (~1MB)
-│   ├── src/
-│   │   ├── App.jsx
-│   │   ├── App.css
-│   │   └── components/
-│   │       ├── WebcamFeed.jsx     # camera + in-browser ML
-│   │       └── EmotionDisplay.jsx # overlay UI
-│   └── package.json
-├── backend/
-│   ├── app.py                # Flask + DeepFace (optional)
-│   └── requirements.txt
-└── start.sh                  # runs both frontend + backend
-```
-
 ---
 
 ## Notes
 
-- First camera start takes 1–2 seconds while the models initialize
 - Works best with decent lighting and a reasonably frontal face
 - Disgust is genuinely hard to trigger — that's the model, not you
+- First start takes 1–2 seconds while models initialize

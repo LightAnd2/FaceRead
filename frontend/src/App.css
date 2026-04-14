@@ -85,6 +85,159 @@ header h1 {
   50%      { opacity: 0.3; }
 }
 
+/* ── Header right ── */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.register-btn {
+  padding: 6px 14px;
+  border-radius: 100px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.register-btn:hover {
+  background: rgba(0,0,0,0.08);
+}
+
+/* ── Register panel ── */
+.register-panel {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.register-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.card-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--muted);
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 0.85rem;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+.register-hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: -4px;
+}
+
+.register-row {
+  display: flex;
+  gap: 8px;
+}
+
+.name-input {
+  flex: 1;
+  padding: 9px 14px;
+  border-radius: 100px;
+  border: 1px solid var(--border);
+  background: #fff;
+  font-size: 0.85rem;
+  font-family: "Inter", sans-serif;
+  outline: none;
+  color: var(--text);
+}
+
+.name-input:focus {
+  border-color: #111;
+}
+
+.capture-btn {
+  padding: 9px 18px;
+  border-radius: 100px;
+  border: none;
+  background: #111;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.capture-btn:disabled {
+  background: var(--border);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.capture-btn:not(:disabled):hover {
+  background: #333;
+}
+
+.register-feedback {
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.register-feedback.ok { color: #16a34a; }
+.register-feedback.err { color: #dc2626; }
+
+.people-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.person-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 12px;
+  border-radius: 100px;
+  background: rgba(0,0,0,0.05);
+  border: 1px solid var(--border);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.person-chip button {
+  background: none;
+  border: none;
+  font-size: 0.7rem;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.person-chip button:hover { color: #dc2626; }
+
+/* ── Webcam inner wrapper ── */
+.webcam-wrapper {
+  position: absolute;
+  inset: 0;
+}
+
 /* ── Camera + overlay container ── */
 .camera-wrap {
   width: 100%;
@@ -107,6 +260,7 @@ header h1 {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  z-index: 1;
 }
 
 .cam-placeholder {
@@ -121,6 +275,7 @@ header h1 {
 
 /* ── Emotion overlay (inside camera-wrap) ── */
 .emotion-overlay {
+  z-index: 2;
   position: absolute;
   bottom: 0;
   left: 0;
@@ -153,6 +308,14 @@ header h1 {
   gap: 2px;
 }
 
+.overlay-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.01em;
+  margin-bottom: 2px;
+}
+
 .overlay-emotion {
   font-size: 1.7rem;
   font-weight: 700;
@@ -173,6 +336,11 @@ header h1 {
   gap: 6px;
   margin-top: 8px;
   flex-wrap: wrap;
+}
+
+.blink-chip {
+  background: rgba(255,215,61,0.2);
+  color: #FFD93D;
 }
 
 .meta-chip {

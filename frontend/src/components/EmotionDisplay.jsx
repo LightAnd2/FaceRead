@@ -34,38 +34,41 @@ export default function EmotionOverlay({ faces, selectedFace, onSelectFace }) {
   }
 
   const face = faces[Math.min(selectedFace, faces.length - 1)];
-  const { dominant_emotion, emotions, age, gender, genderProbability } = face;
+  const { dominant_emotion, emotions, gender, genderProbability, label, blink } = face;
   const color = EMOTION_META[dominant_emotion]?.color ?? "#fff";
   const sorted = Object.entries(emotions).sort((a, b) => b[1] - a[1]);
 
   return (
     <div className="emotion-overlay">
       <div className="overlay-inner">
-
-        {/* Left: dominant emotion + age/gender */}
         <div className="overlay-left">
           {faces.length > 1 && (
             <div className="face-tabs">
-              {faces.map((_, i) => (
+              {faces.map((f, i) => (
                 <button key={i} className={`face-tab ${i === selectedFace ? "active" : ""}`}
-                  onClick={() => onSelectFace(i)}>{i + 1}</button>
+                  onClick={() => onSelectFace(i)}>
+                  {f.label || `Face ${i + 1}`}
+                </button>
               ))}
             </div>
           )}
+
+          {/* Name if recognized */}
+          {label && <div className="overlay-name">{label}</div>}
+
           <div className="overlay-emotion" style={{ color }}>{dominant_emotion}</div>
           <div className="overlay-conf">{emotions[dominant_emotion]?.toFixed(1)}%</div>
 
-          {/* Gender */}
-          {gender && (
-            <div className="overlay-meta">
+          <div className="overlay-meta">
+            {gender && (
               <span className="meta-chip">
                 {gender} {genderProbability != null ? `${genderProbability}%` : ""}
               </span>
-            </div>
-          )}
+            )}
+            {blink && <span className="meta-chip blink-chip">blink</span>}
+          </div>
         </div>
 
-        {/* Right: emotion bars */}
         <div className="overlay-bars">
           {sorted.map(([emotion, score]) => {
             const c = EMOTION_META[emotion]?.color ?? "#fff";
