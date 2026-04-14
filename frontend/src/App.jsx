@@ -10,7 +10,6 @@ export default function App() {
   const [registerSignal, setRegisterSignal] = useState(null);
   const [nameInput, setNameInput] = useState("");
   const [showRegister, setShowRegister] = useState(false);
-  const [showLandmarks, setShowLandmarks] = useState(true);
   const [feedback, setFeedback] = useState("");
   const inputRef = useRef(null);
 
@@ -60,14 +59,13 @@ export default function App() {
       <header>
         <h1>FaceRead</h1>
         <div className="header-right">
-          <button className="register-btn" onClick={() => setShowLandmarks(l => !l)}>
-            {showLandmarks ? "Hide Mesh" : "Show Mesh"}
-          </button>
           <button className="register-btn" onClick={openRegister}>+ Add Person</button>
-          <div className={`status-pill ${running ? "active" : ""}`}>
-            <span className="dot" />
-            {running ? "Live" : "Idle"}
-          </div>
+          {running && (
+            <div className="status-pill active">
+              <span className="dot" />
+              Live
+            </div>
+          )}
         </div>
       </header>
 
@@ -95,7 +93,6 @@ export default function App() {
           {feedback && <p className={`register-feedback ${feedback.startsWith("✓") ? "ok" : "err"}`}>{feedback}</p>}
           {!running && <p className="register-feedback err">Start the camera first</p>}
 
-          {/* Saved people */}
           {people.length > 0 && (
             <div className="people-list">
               {people.map(({ name }) => (
@@ -116,7 +113,6 @@ export default function App() {
             running={running}
             onFaces={handleFaces}
             registerSignal={registerSignal}
-            showLandmarks={showLandmarks}
           />
         ) : (
           <div className="cam-placeholder">

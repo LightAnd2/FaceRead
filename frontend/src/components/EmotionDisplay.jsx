@@ -34,7 +34,7 @@ export default function EmotionOverlay({ faces, selectedFace, onSelectFace }) {
   }
 
   const face = faces[Math.min(selectedFace, faces.length - 1)];
-  const { dominant_emotion, emotions, gender, genderProbability, label, blink } = face;
+  const { dominant_emotion, emotions, gender, genderProbability, label } = face;
   const color = EMOTION_META[dominant_emotion]?.color ?? "#fff";
   const sorted = Object.entries(emotions).sort((a, b) => b[1] - a[1]);
 
@@ -53,7 +53,6 @@ export default function EmotionOverlay({ faces, selectedFace, onSelectFace }) {
             </div>
           )}
 
-          {/* Name if recognized */}
           {label && <div className="overlay-name">{label}</div>}
 
           <div className="overlay-emotion" style={{ color }}>{dominant_emotion}</div>
@@ -65,7 +64,6 @@ export default function EmotionOverlay({ faces, selectedFace, onSelectFace }) {
                 {gender} {genderProbability != null ? `${genderProbability}%` : ""}
               </span>
             )}
-            {blink && <span className="meta-chip blink-chip">blink</span>}
           </div>
         </div>
 
