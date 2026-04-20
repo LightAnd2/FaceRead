@@ -1,5 +1,7 @@
 # FaceRead
 
+**[Live Demo](https://face-read.vercel.app)**
+
 Real-time emotion detection and face recognition straight from your webcam — no account, no cloud, runs entirely in your browser.
 
 ---
