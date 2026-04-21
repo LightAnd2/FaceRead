@@ -133,6 +133,7 @@ export default function App() {
         <span className="btn-dot" />
         {running ? "Stop" : "Start Camera"}
       </button>
+      <Analytics />
     </div>
   );
 }
