@@ -139,7 +139,7 @@ export default function WebcamFeed({ running, onFaces, registerSignal }) {
       <Webcam
         ref={webcamRef}
         screenshotFormat="image/jpeg"
-        videoConstraints={{ facingMode: "user", width: 640, height: 480 }}
+        videoConstraints={{ facingMode: { ideal: "user" }, width: { ideal: 1280 }, height: { ideal: 720 } }}
         style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
         mirrored
       />

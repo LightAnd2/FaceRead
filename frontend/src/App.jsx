@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 import WebcamFeed, { loadPeople, savePeople, buildMatcher } from "./components/WebcamFeed";
 import EmotionOverlay from "./components/EmotionDisplay";
+import { Analytics } from "@vercel/analytics/react";
 
 export default function App() {
   const [running, setRunning] = useState(false);
