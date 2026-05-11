@@ -1,9 +1,16 @@
 import base64
+import os
+import time
 import numpy as np
+from dotenv import load_dotenv
+load_dotenv()
 import cv2
+from io import BytesIO
+from PIL import Image
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from deepface import DeepFace
+from huggingface_hub import InferenceClient
 
 app = Flask(__name__)
 CORS(app)
@@ -81,6 +88,51 @@ def analyze():
             continue
 
     return jsonify({"faces": [], "face_count": 0})
+
+
+@app.route("/age-face", methods=["POST"])
+def age_face():
+    HF_TOKEN = os.getenv("HF_TOKEN")
+    if not HF_TOKEN:
+        return jsonify({"error": "Add HF_TOKEN to your .env file (free at huggingface.co)"}), 500
+
+    data = request.get_json(force=True) or {}
+    frame_data = data.get("image", "")
+    if not frame_data:
+        return jsonify({"error": "No image provided"}), 400
+
+    # Decode base64 image
+    if "," in frame_data:
+        frame_data = frame_data.split(",", 1)[1]
+    img_bytes = base64.b64decode(frame_data)
+
+    # Resize to 512px max (model sweet spot, faster inference)
+    img = Image.open(BytesIO(img_bytes)).convert("RGB")
+    img.thumbnail((512, 512), Image.LANCZOS)
+
+    try:
+        client = InferenceClient(token=HF_TOKEN)
+        result = client.image_to_image(
+            image=img,
+            prompt=(
+                "make this person look 40 years older, photorealistic aging, "
+                "deep wrinkles, forehead lines, crow's feet, gray hair, age spots, "
+                "sagging skin, realistic skin texture, same person"
+            ),
+            negative_prompt="young, smooth skin, cartoon, painting, unrealistic",
+            model="timbrooks/instruct-pix2pix",
+            guidance_scale=7.5,
+            image_guidance_scale=1.5,
+            num_inference_steps=25,
+        )
+
+        buf = BytesIO()
+        result.save(buf, format="JPEG", quality=92)
+        aged_b64 = base64.b64encode(buf.getvalue()).decode()
+        return jsonify({"image": f"data:image/jpeg;base64,{aged_b64}"})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":

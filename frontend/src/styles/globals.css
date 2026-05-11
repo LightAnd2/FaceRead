@@ -1,0 +1,48 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-electric: #006FFF;
+  --color-electric-50: #E5F0FF;
+  --color-electric-100: #C2D9FF;
+  --color-electric-400: #4D9FFF;
+  --color-electric-500: #006FFF;
+  --color-electric-600: #005FDB;
+  --color-dark-base: #0A0A0A;
+  --color-dark-surface: #111111;
+  --color-dark-border: #1F1F1F;
+  --color-dark-hover: #1A1A1A;
+  --font-inter: 'Inter', system-ui, sans-serif;
+  --animate-blink: blink 1.4s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+:root {
+  scroll-behavior: smooth;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.font-inter {
+  font-family: 'Inter', system-ui, sans-serif;
+}
