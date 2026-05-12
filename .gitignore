@@ -2,6 +2,7 @@
 backend/venv/
 backend/__pycache__/
 backend/*.pyc
+backend/*.pkl
 *.egg-info/
 .env
 

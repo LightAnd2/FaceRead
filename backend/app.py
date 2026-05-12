@@ -1,19 +1,23 @@
 import base64
-import os
-import time
 import numpy as np
-from dotenv import load_dotenv
-load_dotenv()
 import cv2
-from io import BytesIO
-from PIL import Image
+import joblib
+import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from deepface import DeepFace
-from huggingface_hub import InferenceClient
 
 app = Flask(__name__)
 CORS(app)
+
+# Load ASL model
+_asl_model = None
+try:
+    _model_path = os.path.join(os.path.dirname(__file__), 'asl_fingerspelling_model.pkl')
+    _asl_model = joblib.load(_model_path)
+    print("ASL model loaded.", flush=True)
+except Exception as e:
+    print(f"ASL model load failed: {e}", flush=True)
 
 print("Loading models...", flush=True)
 try:
@@ -72,7 +76,6 @@ def analyze():
             faces = []
             for r in results:
                 reg = r.get("region", {})
-                # Scale coordinates back to original (pre-downscale) image space
                 def sc(k, s): return int((reg[k][0] if isinstance(reg[k], (list,tuple)) else reg[k]) * s)
                 faces.append({
                     "dominant_emotion": r["dominant_emotion"],
@@ -90,47 +93,31 @@ def analyze():
     return jsonify({"faces": [], "face_count": 0})
 
 
-@app.route("/age-face", methods=["POST"])
-def age_face():
-    HF_TOKEN = os.getenv("HF_TOKEN")
-    if not HF_TOKEN:
-        return jsonify({"error": "Add HF_TOKEN to your .env file (free at huggingface.co)"}), 500
-
-    data = request.get_json(force=True) or {}
-    frame_data = data.get("image", "")
-    if not frame_data:
-        return jsonify({"error": "No image provided"}), 400
-
-    # Decode base64 image
-    if "," in frame_data:
-        frame_data = frame_data.split(",", 1)[1]
-    img_bytes = base64.b64decode(frame_data)
-
-    # Resize to 512px max (model sweet spot, faster inference)
-    img = Image.open(BytesIO(img_bytes)).convert("RGB")
-    img.thumbnail((512, 512), Image.LANCZOS)
-
+@app.route("/classify-asl", methods=["POST"])
+def classify_asl():
+    if _asl_model is None:
+        return jsonify({"error": "Model not loaded"}), 503
     try:
-        client = InferenceClient(token=HF_TOKEN)
-        result = client.image_to_image(
-            image=img,
-            prompt=(
-                "make this person look 40 years older, photorealistic aging, "
-                "deep wrinkles, forehead lines, crow's feet, gray hair, age spots, "
-                "sagging skin, realistic skin texture, same person"
-            ),
-            negative_prompt="young, smooth skin, cartoon, painting, unrealistic",
-            model="timbrooks/instruct-pix2pix",
-            guidance_scale=7.5,
-            image_guidance_scale=1.5,
-            num_inference_steps=25,
-        )
+        data = request.get_json(force=True) or {}
+        landmarks = data.get("landmarks", [])  # flat list of 63 floats [x0,y0,z0, x1,y1,z1, ...]
+        if len(landmarks) != 63:
+            return jsonify({"letter": None, "confidence": 0}), 400
 
-        buf = BytesIO()
-        result.save(buf, format="JPEG", quality=92)
-        aged_b64 = base64.b64encode(buf.getvalue()).decode()
-        return jsonify({"image": f"data:image/jpeg;base64,{aged_b64}"})
+        X = np.array(landmarks).reshape(1, -1)
+        letter = _asl_model.predict(X)[0]
 
+        # Get confidence via decision function if available
+        confidence = 0
+        if hasattr(_asl_model, 'predict_proba'):
+            proba = _asl_model.predict_proba(X)[0]
+            confidence = round(float(np.max(proba)) * 100, 1)
+        elif hasattr(_asl_model, 'decision_function'):
+            scores = _asl_model.decision_function(X)[0]
+            exp_scores = np.exp(scores - np.max(scores))
+            proba = exp_scores / exp_scores.sum()
+            confidence = round(float(np.max(proba)) * 100, 1)
+
+        return jsonify({"letter": letter, "confidence": confidence})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

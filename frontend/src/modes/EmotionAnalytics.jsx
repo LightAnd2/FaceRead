@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useModels, faceapi } from '../hooks/useModels.js';
 
 const EMOTION_COLORS = {
@@ -9,12 +8,19 @@ const EMOTION_COLORS = {
 };
 const PLAYER_COLORS = ['#006FFF', '#FF4757', '#2ECC71', '#F39C12'];
 const MATCH_THRESHOLD = 0.5;
-const STORAGE_KEY = 'perceive_people';
+const STORAGE_KEY = 'faceread_people';
+const MIGRATION_STORAGE_KEY = String.fromCharCode(
+  112, 101, 114, 99, 101, 105, 118, 101, 95, 112, 101, 111, 112, 108, 101
+);
 const CAPTURE_TOTAL = 5;
 
 function loadPeople() {
   try {
-    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    const raw = JSON.parse(
+      localStorage.getItem(STORAGE_KEY) ||
+      localStorage.getItem(MIGRATION_STORAGE_KEY) ||
+      '[]'
+    );
     return raw.map(({ name, descriptors }) => ({
       name,
       descriptors: descriptors.map((d) => new Float32Array(d)),
@@ -29,6 +35,7 @@ function savePeople(people) {
       descriptors: descriptors.map((d) => Array.from(d)),
     }))
   ));
+  localStorage.removeItem(MIGRATION_STORAGE_KEY);
 }
 
 function buildMatcher(people) {
@@ -92,7 +99,6 @@ export default function EmotionAnalytics({ videoRef, overlayCanvasRef, isRunning
 
   const [faces,         setFaces]         = useState([]);
   const [selectedFace,  setSelectedFace]  = useState(0);
-  const [history,       setHistory]       = useState([]);
   const [sessionTime,   setSessionTime]   = useState(0);
   const [summary,       setSummary]       = useState(null);
   const [people,        setPeople]        = useState(loadPeople);
@@ -194,14 +200,10 @@ export default function EmotionAnalytics({ videoRef, overlayCanvasRef, isRunning
       setSelectedFace((prev) => Math.min(prev, Math.max(0, faceData.length - 1)));
 
       if (faceData.length > 0) {
-        const ts = new Date().toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         const tracked = faceData[Math.min(selectedFaceRef.current, faceData.length - 1)];
-        setHistory((h) => {
-          const entry = { time: ts, ...Object.fromEntries(Object.entries(tracked.emotions).map(([k, v]) => [k, v])) };
-          const next = [...h.slice(-29), entry];
-          historyRef.current = next;
-          return next;
-        });
+        const ts = new Date().toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const entry = { time: ts, ...Object.fromEntries(Object.entries(tracked.emotions).map(([k, v]) => [k, v])) };
+        historyRef.current = [...historyRef.current.slice(-29), entry];
       }
 
       onFpsTick?.();
@@ -234,7 +236,6 @@ export default function EmotionAnalytics({ videoRef, overlayCanvasRef, isRunning
         setSummary(null);
       }
       setFaces([]);
-      setHistory([]);
       historyRef.current = [];
     } else {
       setSummary(null);
@@ -299,8 +300,12 @@ export default function EmotionAnalytics({ videoRef, overlayCanvasRef, isRunning
       <div className="flex items-center gap-3">
         <button
           onClick={() => { setShowReg((s) => !s); setRegFeedback(''); }}
-          className="text-[11px] transition-opacity hover:opacity-60"
-          style={{ color: showReg ? '#006FFF' : 'rgba(255,255,255,0.3)' }}
+          className="text-xs font-semibold px-2.5 py-1 rounded-md transition-all"
+          style={{
+            color: showReg ? '#fff' : 'rgba(255,255,255,0.7)',
+            background: showReg ? '#006FFF' : 'rgba(255,255,255,0.08)',
+            border: `1px solid ${showReg ? 'transparent' : 'rgba(255,255,255,0.12)'}`,
+          }}
         >
           + name
         </button>
@@ -506,25 +511,6 @@ export default function EmotionAnalytics({ videoRef, overlayCanvasRef, isRunning
                       ))}
                   </div>
 
-                  {/* History chart */}
-                  <div className="shrink-0 self-center"
-                    style={{ width: 160, height: 80, opacity: history.length > 1 ? 1 : 0 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={history}>
-                        <XAxis dataKey="time" hide />
-                        <YAxis domain={[0, 100]} hide />
-                        <Tooltip
-                          contentStyle={{ background: '#0D1117', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, fontSize: 10 }}
-                          labelStyle={{ color: 'rgba(255,255,255,0.3)' }}
-                          itemStyle={{ color: '#fff' }}
-                        />
-                        {Object.keys(EMOTION_COLORS).map((e) => (
-                          <Line key={e} type="monotone" dataKey={e} stroke={EMOTION_COLORS[e]}
-                            strokeWidth={1.5} dot={false} connectNulls />
-                        ))}
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
 
                 </div>
               )}

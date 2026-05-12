@@ -1,152 +1,11 @@
-import { useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import Webcam from 'react-webcam';
+import { CameraProvider } from '../contexts/CameraContext.jsx';
+import EmotionAnalytics from '../modes/EmotionAnalytics.jsx';
+import ASLRecognition from '../modes/ASLRecognition.jsx';
 
 const ELECTRIC = '#006FFF';
-
-const SECTIONS = [
-  {
-    label: 'Face',
-    modes: [
-      { id: 'emotion',   name: 'Emotion Analytics',  desc: '7-class real-time emotion detection with multi-face support' },
-      { id: 'age',       name: 'Age Progression',     desc: 'AI-powered face aging via HuggingFace' },
-      { id: 'swap',      name: 'Face Swap',           desc: 'Landmark-aligned face region swap' },
-      { id: 'filters',   name: 'Face Filters',        desc: 'AR overlays on 68 landmark points' },
-      { id: 'avatar',    name: 'Avatar Mode',         desc: 'Canvas avatar driven by expressions' },
-    ],
-  },
-  {
-    label: 'Gesture',
-    modes: [
-      { id: 'asl',       name: 'ASL Recognition',    desc: 'Hand classification for sign language' },
-      { id: 'eye',       name: 'Eye Tracking',        desc: 'Gaze estimation and attention heatmap' },
-      { id: 'gesture',   name: 'Gesture Control',     desc: 'Control the app with hand poses' },
-    ],
-  },
-  {
-    label: 'Audio',
-    modes: [
-      { id: 'voice',     name: 'Voice Emotion',       desc: 'Pitch and energy mapped to emotion' },
-      { id: 'music',     name: 'Music Recognition',   desc: '10-second clip matched via ACRCloud' },
-    ],
-  },
-  {
-    label: 'Productivity',
-    modes: [
-      { id: 'interview', name: 'Interview Coach',     desc: 'Eye contact and confidence scoring' },
-      { id: 'fatigue',   name: 'Fatigue Detection',   desc: 'Eye aspect ratio composite score' },
-      { id: 'bg',        name: 'Background Replace',  desc: 'MediaPipe segmentation per frame' },
-    ],
-  },
-];
-
-// ── Demo canvases ───────────────────────────────────────────────────────────
-
-function WaveDemo() {
-  const ref = useRef(null);
-  useEffect(() => {
-    const c = ref.current; if (!c) return;
-    const ctx = c.getContext('2d'); let t = 0, raf;
-    const draw = () => {
-      c.width = c.offsetWidth; c.height = c.offsetHeight;
-      const w = c.width, h = c.height;
-      ctx.clearRect(0, 0, w, h);
-      ctx.strokeStyle = '#006FFF'; ctx.lineWidth = 2;
-      ctx.shadowColor = '#006FFF'; ctx.shadowBlur = 10;
-      ctx.beginPath();
-      for (let x = 0; x < w; x++) {
-        const y = h/2 + Math.sin((x/w)*Math.PI*4+t)*(h*0.22) + Math.sin((x/w)*Math.PI*7+t*1.3)*(h*0.1);
-        x===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
-      }
-      ctx.stroke(); ctx.shadowBlur = 0; t+=0.04;
-      raf = requestAnimationFrame(draw);
-    };
-    draw(); return () => cancelAnimationFrame(raf);
-  }, []);
-  return <canvas ref={ref} className="w-full h-full" />;
-}
-
-function EmotionBarsDemo() {
-  const ref = useRef(null);
-  useEffect(() => {
-    const c = ref.current; if (!c) return;
-    const ctx = c.getContext('2d');
-    const EM = [
-      {label:'happy',color:'#FFD93D'},{label:'neutral',color:'#A0A0B0'},
-      {label:'surprised',color:'#FF6B35'},{label:'sad',color:'#00B4D8'},{label:'angry',color:'#FF4757'},
-    ];
-    const ph = EM.map(() => Math.random()*Math.PI*2);
-    let t=0, raf;
-    const draw = () => {
-      c.width=c.offsetWidth; c.height=c.offsetHeight;
-      const w=c.width, h=c.height; ctx.clearRect(0,0,w,h);
-      const rowH = h/EM.length;
-      EM.forEach((e,i) => {
-        const val=(Math.sin(t+ph[i])+1)/2, bW=val*(w-80), y=i*rowH+rowH*0.2, bh=rowH*0.45;
-        ctx.fillStyle='rgba(255,255,255,0.05)';
-        ctx.beginPath(); ctx.roundRect(60,y,w-80,bh,3); ctx.fill();
-        if(bW>0){ctx.fillStyle=e.color;ctx.beginPath();ctx.roundRect(60,y,bW,bh,3);ctx.fill();}
-        ctx.fillStyle='rgba(255,255,255,0.35)'; ctx.font='10px Inter,sans-serif';
-        ctx.textAlign='right'; ctx.fillText(e.label,52,y+bh*0.75);
-      });
-      t+=0.025; raf=requestAnimationFrame(draw);
-    };
-    draw(); return () => cancelAnimationFrame(raf);
-  }, []);
-  return <canvas ref={ref} className="w-full h-full" />;
-}
-
-function HandSkeletonDemo() {
-  const ref = useRef(null);
-  useEffect(() => {
-    const c = ref.current; if (!c) return;
-    const ctx = c.getContext('2d'); let t=0, raf;
-    const CONNS=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],[0,17],[17,18],[18,19],[19,20],[5,9],[9,13],[13,17]];
-    const draw = () => {
-      c.width=c.offsetWidth; c.height=c.offsetHeight;
-      const w=c.width, h=c.height; ctx.clearRect(0,0,w,h);
-      const cx=w*0.5, cy=h*0.58, sc=Math.min(w,h)*0.38, sw=Math.sin(t*0.4)*0.04;
-      const pts=[[0,.12],[-0.15+sw,-.02],[-0.17+sw,-.22],[-0.17+sw,-.38],[-0.17+sw,-.5],[-0.06,-.08],[-0.08,-.38],[-0.08,-.56],[-0.08,-.7],[.05,-.06],[.04,-.38],[.04,-.57],[.04,-.7],[.15,-.04],[.16,-.32],[.16,-.48],[.16,-.6],[.24,.02],[.26,-.22],[.26,-.36],[.26,-.46]].map(([dx,dy])=>[cx+dx*sc,cy+dy*sc+Math.sin(t*0.6+dx*3)*3]);
-      ctx.strokeStyle='rgba(0,111,255,0.55)'; ctx.lineWidth=1.5;
-      CONNS.forEach(([a,b])=>{ctx.beginPath();ctx.moveTo(pts[a][0],pts[a][1]);ctx.lineTo(pts[b][0],pts[b][1]);ctx.stroke();});
-      [4,8,12,16,20].forEach(ti=>{ctx.beginPath();ctx.arc(pts[ti][0],pts[ti][1],4.5,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();});
-      pts.forEach((p,i)=>{if(![4,8,12,16,20].includes(i)){ctx.beginPath();ctx.arc(p[0],p[1],2.5,0,Math.PI*2);ctx.fillStyle='#006FFF';ctx.fill();}});
-      t+=0.04; raf=requestAnimationFrame(draw);
-    };
-    draw(); return () => cancelAnimationFrame(raf);
-  }, []);
-  return <canvas ref={ref} className="w-full h-full" />;
-}
-
-function GazeDemo() {
-  const ref = useRef(null);
-  useEffect(() => {
-    const c = ref.current; if (!c) return;
-    const ctx = c.getContext('2d'); let t=0; const trail=[]; let raf;
-    const draw = () => {
-      c.width=c.offsetWidth; c.height=c.offsetHeight;
-      const w=c.width, h=c.height;
-      const gx=w*0.5+Math.sin(t*0.7)*w*0.28+Math.sin(t*1.3)*w*0.1;
-      const gy=h*0.5+Math.cos(t*0.5)*h*0.25+Math.cos(t*1.1)*h*0.1;
-      trail.push({x:gx,y:gy}); if(trail.length>40) trail.shift();
-      ctx.clearRect(0,0,w,h);
-      ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=1;
-      ctx.beginPath();ctx.moveTo(w/2,0);ctx.lineTo(w/2,h);ctx.stroke();
-      ctx.beginPath();ctx.moveTo(0,h/2);ctx.lineTo(w,h/2);ctx.stroke();
-      trail.forEach((p,i)=>{
-        const alpha=(i/trail.length)*0.18, r=(trail.length-i)*0.6;
-        const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,r+4);
-        g.addColorStop(0,`rgba(0,111,255,${alpha})`); g.addColorStop(1,'rgba(0,111,255,0)');
-        ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
-      });
-      ctx.beginPath(); ctx.arc(gx,gy,6,0,Math.PI*2);
-      ctx.fillStyle='#006FFF'; ctx.shadowColor='#006FFF'; ctx.shadowBlur=12; ctx.fill(); ctx.shadowBlur=0;
-      t+=0.03; raf=requestAnimationFrame(draw);
-    };
-    draw(); return () => cancelAnimationFrame(raf);
-  }, []);
-  return <canvas ref={ref} className="w-full h-full" />;
-}
 
 // ── Robot + Emotion Bars Canvas ─────────────────────────────────────────────
 
@@ -689,17 +548,265 @@ function StarfieldBackground() {
   return <canvas ref={ref} style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0 }} />;
 }
 
-const DEMOS = [
-  { label:'Voice Emotion',     sublabel:'Web Audio API',   component:WaveDemo },
-  { label:'Emotion Analytics', sublabel:'face-api.js',     component:EmotionBarsDemo },
-  { label:'Gesture Control',   sublabel:'MediaPipe Hands', component:HandSkeletonDemo },
-  { label:'Eye Tracking',      sublabel:'face-api.js',     component:GazeDemo },
-];
+// ── FaceRead live section ────────────────────────────────────────────────────
+
+function FaceReadSection() {
+  const [isRunning, setIsRunning] = useState(false);
+  const [isReady,   setIsReady]   = useState(false);
+  const [fps,       setFps]       = useState(0);
+
+  const webcamRef        = useRef(null);
+  const overlayCanvasRef = useRef(null);
+  const fpsRef           = useRef({ count: 0, last: performance.now() });
+
+  const tickFps = useCallback(() => {
+    fpsRef.current.count++;
+    const now = performance.now();
+    if (now - fpsRef.current.last >= 1000) {
+      setFps(fpsRef.current.count);
+      fpsRef.current.count = 0;
+      fpsRef.current.last  = now;
+    }
+  }, []);
+
+  const syncCanvas = useCallback(() => {
+    const video  = webcamRef.current?.video;
+    const canvas = overlayCanvasRef.current;
+    if (!video || !canvas) return;
+    canvas.width  = video.videoWidth  || video.clientWidth;
+    canvas.height = video.videoHeight || video.clientHeight;
+  }, []);
+
+  const toggle = () => {
+    setIsRunning(r => !r);
+    if (isRunning) { setIsReady(false); setFps(0); }
+  };
+
+  return (
+    <CameraProvider>
+      <div className="flex flex-col items-center gap-4 w-full">
+
+        {/* Camera box */}
+        <div className="relative w-full" style={{ maxWidth: 860, aspectRatio: '16/10' }}>
+          <div className="relative w-full h-full rounded-2xl overflow-hidden" style={{ background: '#0a0a0a' }}>
+            <AnimatePresence>
+              {isRunning && (
+                <motion.div
+                  key="cam" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  transition={{ duration: 0.4 }} className="absolute inset-0"
+                >
+                  <Webcam ref={webcamRef} mirrored
+                    videoConstraints={{ facingMode: 'user', width: 1280, height: 720 }}
+                    className="w-full h-full object-cover"
+                    onUserMedia={() => { setIsReady(true); syncCanvas(); }}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {!isRunning && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 select-none">
+                <svg width="44" height="44" viewBox="0 0 48 48" fill="none" style={{ opacity: 0.1 }}>
+                  <rect x="2" y="10" width="36" height="28" rx="4" stroke="white" strokeWidth="1.5"/>
+                  <circle cx="20" cy="24" r="8" stroke="white" strokeWidth="1.5"/>
+                  <circle cx="20" cy="24" r="3" fill="white" fillOpacity="0.4"/>
+                  <path d="M38 18l8-5v18l-8-5V18z" stroke="white" strokeWidth="1.5" strokeLinejoin="round"/>
+                </svg>
+                <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.1)', letterSpacing: '0.14em' }}>
+                  PRESS START
+                </span>
+              </div>
+            )}
+
+            <canvas ref={overlayCanvasRef}
+              className="absolute inset-0 w-full h-full pointer-events-none" />
+
+            {/* fps + live badge */}
+            <AnimatePresence>
+              {isRunning && (
+                <motion.div
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="absolute top-3 right-3 flex items-center gap-3"
+                >
+                  <span className="text-xs font-mono tabular-nums" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                    {fps} fps
+                  </span>
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+                    style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}>
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#006FFF' }} />
+                    <span className="text-xs font-medium" style={{ color: '#006FFF' }}>live</span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Stats overlay — bottom of video */}
+            <AnimatePresence>
+              {isRunning && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="absolute bottom-0 left-0 right-0 pointer-events-none"
+                  style={{
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.4) 60%, transparent 100%)',
+                    padding: '40px 20px 16px',
+                  }}
+                >
+                  <div className="pointer-events-auto">
+                    <EmotionAnalytics
+                      videoRef={webcamRef}
+                      overlayCanvasRef={overlayCanvasRef}
+                      isRunning={isRunning}
+                      isReady={isReady}
+                      onFpsTick={tickFps}
+                      dark={true}
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* Toggle */}
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={toggle}
+          className="px-10 py-2.5 rounded-lg text-sm font-semibold transition-all"
+          style={isRunning
+            ? { background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.35)', border: '1px solid rgba(255,255,255,0.08)' }
+            : { background: '#006FFF', color: '#fff', border: 'none' }
+          }
+        >
+          {isRunning ? 'Stop' : 'Start FaceRead'}
+        </motion.button>
+      </div>
+    </CameraProvider>
+  );
+}
+
+// ── ASL live section ─────────────────────────────────────────────────────────
+
+function ASLSection() {
+  const [isRunning, setIsRunning] = useState(false);
+  const [isReady,   setIsReady]   = useState(false);
+  const [fps,       setFps]       = useState(0);
+
+  const webcamRef        = useRef(null);
+  const overlayCanvasRef = useRef(null);
+  const fpsRef           = useRef({ count: 0, last: performance.now() });
+
+  const tickFps = useCallback(() => {
+    fpsRef.current.count++;
+    const now = performance.now();
+    if (now - fpsRef.current.last >= 1000) {
+      setFps(fpsRef.current.count);
+      fpsRef.current.count = 0;
+      fpsRef.current.last  = now;
+    }
+  }, []);
+
+  const syncCanvas = useCallback(() => {
+    const video  = webcamRef.current?.video;
+    const canvas = overlayCanvasRef.current;
+    if (!video || !canvas) return;
+    canvas.width  = video.videoWidth  || video.clientWidth;
+    canvas.height = video.videoHeight || video.clientHeight;
+  }, []);
+
+  const toggle = () => {
+    setIsRunning(r => !r);
+    if (isRunning) { setIsReady(false); setFps(0); }
+  };
+
+  return (
+    <CameraProvider>
+      <div className="flex flex-col items-center gap-4 w-full">
+
+        {/* Canvas box — CANVAS_REPLACE: webcam hidden, canvas is the display */}
+        <div className="relative w-full" style={{ maxWidth: 860, aspectRatio: '16/9' }}>
+          <div className="relative w-full h-full rounded-2xl overflow-hidden" style={{ background: '#0a0a0a' }}>
+            <AnimatePresence>
+              {isRunning && (
+                <motion.div
+                  key="asl" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  transition={{ duration: 0.4 }} className="absolute inset-0"
+                >
+                  <Webcam ref={webcamRef} mirrored
+                    videoConstraints={{ facingMode: 'user', width: 1280, height: 720 }}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    onUserMedia={() => { setIsReady(true); syncCanvas(); }}
+                  />
+                  <canvas ref={overlayCanvasRef} className="absolute inset-0 w-full h-full object-cover" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {!isRunning && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 select-none">
+                <svg width="44" height="44" viewBox="0 0 48 48" fill="none" style={{ opacity: 0.1 }}>
+                  <rect x="2" y="10" width="36" height="28" rx="4" stroke="white" strokeWidth="1.5"/>
+                  <circle cx="20" cy="24" r="8" stroke="white" strokeWidth="1.5"/>
+                  <circle cx="20" cy="24" r="3" fill="white" fillOpacity="0.4"/>
+                  <path d="M38 18l8-5v18l-8-5V18z" stroke="white" strokeWidth="1.5" strokeLinejoin="round"/>
+                </svg>
+                <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.1)', letterSpacing: '0.14em' }}>
+                  PRESS START
+                </span>
+              </div>
+            )}
+
+            <AnimatePresence>
+              {isRunning && (
+                <motion.div
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="absolute top-3 right-3 flex items-center gap-3"
+                >
+                  <span className="text-xs font-mono tabular-nums" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                    {fps} fps
+                  </span>
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+                    style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}>
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#006FFF' }} />
+                    <span className="text-xs font-medium" style={{ color: '#006FFF' }}>live</span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* ASL readout */}
+        <div className="w-full" style={{ maxWidth: 860 }}>
+          <ASLRecognition
+            videoRef={webcamRef}
+            overlayCanvasRef={overlayCanvasRef}
+            isRunning={isRunning}
+            isReady={isReady}
+            onFpsTick={tickFps}
+            dark={true}
+          />
+        </div>
+
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={toggle}
+          className="px-10 py-2.5 rounded-lg text-sm font-semibold transition-all"
+          style={isRunning
+            ? { background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.35)', border: '1px solid rgba(255,255,255,0.08)' }
+            : { background: '#006FFF', color: '#fff', border: 'none' }
+          }
+        >
+          {isRunning ? 'Stop' : 'Start ASL'}
+        </motion.button>
+      </div>
+    </CameraProvider>
+  );
+}
 
 // ── Main ────────────────────────────────────────────────────────────────────
 
 export default function Landing() {
-  const navigate = useNavigate();
 
   return (
     <div style={{ fontFamily:'Inter,system-ui,sans-serif', background:'#000', color:'#fff', minHeight:'100vh', position:'relative' }}>
@@ -719,36 +826,27 @@ export default function Landing() {
                 className="font-black leading-none tracking-tight mb-7"
                 style={{ fontSize:'clamp(48px,7vw,88px)', letterSpacing:'-0.04em' }}
               >
-                Perceive.
+                FaceRead.
                 <br />
                 <motion.span initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.25,duration:0.6}} style={{color:ELECTRIC}}>
-                  See beyond
+                  See what faces
                 </motion.span>
                 <br />
                 <motion.span initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.4,duration:0.6}} style={{color:'rgba(255,255,255,0.35)'}}>
-                  the surface.
+                  actually say.
                 </motion.span>
               </motion.h1>
 
-              <motion.p
-                initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} transition={{delay:0.5,duration:0.5}}
-                className="text-base leading-relaxed mb-10 max-w-sm"
-                style={{color:'rgba(255,255,255,0.3)'}}
-              >
-                Real-time face, gesture, and audio analysis.
-                13 modes. No installs, no uploads.
-              </motion.p>
-
-              <motion.div initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} transition={{delay:0.65,duration:0.4}} className="flex items-center gap-5">
-                <button onClick={() => navigate('/app')}
-                  className="px-7 py-2.5 rounded text-sm font-semibold text-white transition-opacity hover:opacity-85"
+              <motion.div initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} transition={{delay:0.5,duration:0.4}} className="flex items-center gap-5">
+                <a href="#faceread"
+                  className="px-7 py-2.5 rounded text-sm font-semibold text-white transition-opacity hover:opacity-85 inline-block"
                   style={{background:ELECTRIC}}>
-                  Open app
-                </button>
-                <a href="#demos" className="text-sm transition-colors" style={{color:'rgba(255,255,255,0.25)'}}
+                  Try it ↓
+                </a>
+                <a href="#asl" className="text-sm transition-colors" style={{color:'rgba(255,255,255,0.25)'}}
                   onMouseEnter={e=>e.currentTarget.style.color='rgba(255,255,255,0.6)'}
                   onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,0.25)'}>
-                  See live demos ↓
+                  New: ASL ↓
                 </a>
               </motion.div>
             </div>
@@ -765,165 +863,72 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* Demo strip */}
-        <section id="demos" style={{borderTop:'1px solid rgba(255,255,255,0.06)'}}>
+        {/* FaceRead — live on home */}
+        <section id="faceread" style={{borderTop:'1px solid rgba(255,255,255,0.06)'}}>
           <div className="max-w-5xl mx-auto px-6 py-16">
-            <motion.p initial={{opacity:0}} whileInView={{opacity:1}} viewport={{once:true}} transition={{duration:0.4}}
-              className="text-xs mb-8" style={{color:'rgba(255,255,255,0.2)'}}>
-              Live demos
-            </motion.p>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              {DEMOS.map(({label,sublabel,component:Demo},i)=>(
-                <motion.div key={label}
-                  initial={{opacity:0,y:16}} whileInView={{opacity:1,y:0}} viewport={{once:true}}
-                  transition={{delay:i*0.07,duration:0.45}}
-                  className="rounded-xl overflow-hidden"
-                  style={{border:'1px solid rgba(255,255,255,0.07)',background:'#080810',aspectRatio:'4/3'}}>
-                  <div className="w-full h-full relative">
-                    <Demo />
-                    <div className="absolute bottom-0 left-0 right-0 px-3 py-2.5"
-                      style={{background:'linear-gradient(to top,rgba(8,8,16,0.95) 0%,transparent 100%)'}}>
-                      <div className="text-xs font-semibold" style={{color:'rgba(255,255,255,0.8)'}}>{label}</div>
-                      <div className="text-[10px] mt-0.5" style={{color:'rgba(255,255,255,0.28)'}}>{sublabel}</div>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+            <motion.div initial={{opacity:0,y:16}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{duration:0.45}}>
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h2 className="text-2xl font-black" style={{color:'rgba(255,255,255,0.88)'}}>FaceRead</h2>
+                </div>
+                <a href="#asl" className="text-xs transition-colors shrink-0"
+                  style={{color:'rgba(255,255,255,0.25)'}}
+                  onMouseEnter={e=>e.currentTarget.style.color='rgba(255,255,255,0.6)'}
+                  onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,0.25)'}>
+                  New feature ↓
+                </a>
+              </div>
+              <FaceReadSection />
+            </motion.div>
           </div>
         </section>
 
-        {/* Mode cards */}
-        <section id="modes" style={{borderTop:'1px solid rgba(255,255,255,0.06)'}}>
-          <div className="max-w-5xl mx-auto px-6 py-20">
-            <motion.div initial={{opacity:0,y:12}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{duration:0.4}}
-              className="flex items-end justify-between mb-14">
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{color:'rgba(0,111,255,0.7)'}}>Platform</div>
-                <h2 className="text-2xl font-black" style={{color:'rgba(255,255,255,0.88)'}}>All 13 modes</h2>
+        {/* ASL — new feature */}
+        <section id="asl" style={{borderTop:'1px solid rgba(255,255,255,0.06)'}}>
+          <div className="max-w-5xl mx-auto px-6 py-16">
+            <motion.div initial={{opacity:0,y:16}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{duration:0.45}}>
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="text-[11px] font-bold uppercase tracking-widest" style={{color:'rgba(0,111,255,0.7)'}}>New Feature</div>
+                    <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"
+                      style={{background:'rgba(0,111,255,0.15)',color:'#006FFF',border:'1px solid rgba(0,111,255,0.25)'}}>
+                      Beta
+                    </span>
+                  </div>
+                  <h2 className="text-2xl font-black" style={{color:'rgba(255,255,255,0.88)'}}>ASL Recognition</h2>
+                  <p className="text-xs mt-1" style={{color:'rgba(255,255,255,0.22)'}}>Sign letters with your hands, it reads them back</p>
+                </div>
               </div>
-              <button onClick={()=>navigate('/app')}
-                className="text-xs font-semibold transition-opacity hover:opacity-60"
-                style={{color:'rgba(255,255,255,0.35)'}}>
-                Open app →
-              </button>
+              <ASLSection />
             </motion.div>
-
-            <div className="space-y-12">
-              {SECTIONS.map((section, si) => {
-                return (
-                  <motion.div key={section.label}
-                    initial={{opacity:0,y:16}} whileInView={{opacity:1,y:0}} viewport={{once:true,margin:'-30px'}}
-                    transition={{delay:si*0.06,duration:0.45}}>
-                    {/* Section header */}
-                    <div className="flex items-center gap-3 mb-4">
-                      <span className="text-[11px] font-bold uppercase tracking-widest shrink-0" style={{color:'rgba(0,111,255,0.6)'}}>
-                        {section.label}
-                      </span>
-                      <div className="flex-1 h-px" style={{background:'linear-gradient(to right, rgba(0,111,255,0.2), transparent)'}} />
-                    </div>
-
-                    {/* Cards */}
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5">
-                      {section.modes.map((mode, mi) => (
-                        <motion.button key={mode.id}
-                          initial={{opacity:0,y:10}} whileInView={{opacity:1,y:0}} viewport={{once:true}}
-                          transition={{delay:si*0.06+mi*0.04,duration:0.35}}
-                          onClick={()=>navigate(`/app/${mode.id}`)}
-                          className="group relative text-left p-4 rounded-xl transition-all duration-200"
-                          style={{
-                            background:'rgba(255,255,255,0.025)',
-                            border:'1px solid rgba(255,255,255,0.07)',
-                          }}
-                          whileHover={{
-                            backgroundColor:'rgba(255,255,255,0.045)',
-                            borderColor: 'rgba(0,111,255,0.3)',
-                            y: -1,
-                          }}
-                          transition={{duration:0.15}}>
-                          {/* Top row: name + arrow */}
-                          <div className="flex items-start justify-between gap-2 mb-2">
-                            <span className="text-[13px] font-semibold leading-snug transition-colors duration-150 group-hover:text-white"
-                              style={{color:'rgba(255,255,255,0.72)'}}>
-                              {mode.name}
-                            </span>
-                            <span className="text-[11px] shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150"
-                              style={{color:ELECTRIC}}>
-                              →
-                            </span>
-                          </div>
-                          {/* Description */}
-                          <p className="text-[11px] leading-relaxed" style={{color:'rgba(255,255,255,0.22)'}}>
-                            {mode.desc}
-                          </p>
-                          {/* Bottom accent line on hover */}
-                          <div className="absolute bottom-0 left-4 right-4 h-px rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                            style={{background:'linear-gradient(to right, rgba(0,111,255,0.4), transparent)'}} />
-                        </motion.button>
-                      ))}
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
           </div>
         </section>
 
         {/* Footer */}
-        <footer className="px-6 pt-16 pb-10" style={{borderTop:'1px solid rgba(255,255,255,0.06)'}}>
-          <div className="max-w-5xl mx-auto">
-            {/* Top row */}
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-10 mb-12">
-              {/* Brand */}
-              <div>
-                <div className="font-black text-xl tracking-tight mb-2" style={{color:'#fff'}}>Perceive</div>
-                <p className="text-xs leading-relaxed max-w-xs" style={{color:'rgba(255,255,255,0.22)'}}>
-                  Real-time face, gesture &amp; audio analysis.<br/>
-                  13 modes. No installs, no uploads.
-                </p>
-              </div>
-
-              {/* Links */}
-              <div className="flex gap-16">
-                <div>
-                  <div className="text-[10px] font-bold uppercase tracking-widest mb-3" style={{color:'rgba(255,255,255,0.2)'}}>App</div>
-                  <div className="flex flex-col gap-2">
-                    {[['Open app', ()=>navigate('/app')], ['Emotion Analytics', ()=>navigate('/app/emotion')], ['Face Filters', ()=>navigate('/app/filters')], ['Gesture Control', ()=>navigate('/app/gesture')]].map(([label, action])=>(
-                      <button key={label} onClick={action}
-                        className="text-xs text-left transition-colors"
-                        style={{color:'rgba(255,255,255,0.3)'}}
-                        onMouseEnter={e=>e.currentTarget.style.color='rgba(255,255,255,0.7)'}
-                        onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,0.3)'}>
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] font-bold uppercase tracking-widest mb-3" style={{color:'rgba(255,255,255,0.2)'}}>Links</div>
-                  <div className="flex flex-col gap-2">
-                    <a href="https://github.com/LightAnd2" target="_blank" rel="noreferrer"
-                      className="text-xs transition-colors"
-                      style={{color:'rgba(255,255,255,0.3)'}}
-                      onMouseEnter={e=>e.currentTarget.style.color='rgba(255,255,255,0.7)'}
-                      onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,0.3)'}>
-                      GitHub
-                    </a>
-                  </div>
-                </div>
-              </div>
+        <footer className="px-6 py-8" style={{borderTop:'1px solid rgba(255,255,255,0.06)'}}>
+          <div className="max-w-5xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <span className="font-black text-sm tracking-tight" style={{color:'rgba(255,255,255,0.5)'}}>FaceRead</span>
+              <span className="text-[11px]" style={{color:'rgba(255,255,255,0.14)'}}>© {new Date().getFullYear()}</span>
             </div>
-
-            {/* Bottom bar */}
-            <div className="flex items-center justify-between pt-6" style={{borderTop:'1px solid rgba(255,255,255,0.05)'}}>
-              <span className="text-[11px]" style={{color:'rgba(255,255,255,0.14)'}}>
-                © {new Date().getFullYear()} Perceive
-              </span>
-              <button onClick={()=>navigate('/app')}
-                className="text-xs font-semibold transition-opacity hover:opacity-60"
-                style={{color:ELECTRIC}}>
-                Launch app →
-              </button>
+            <div className="flex items-center gap-6">
+              {[['FaceRead','#faceread'],['ASL','#asl']].map(([label,href])=>(
+                <a key={label} href={href} className="text-xs transition-colors"
+                  style={{color:'rgba(255,255,255,0.25)'}}
+                  onMouseEnter={e=>e.currentTarget.style.color='rgba(255,255,255,0.6)'}
+                  onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,0.25)'}>
+                  {label}
+                </a>
+              ))}
+              <a href="https://github.com/LightAnd2/FaceRead" target="_blank" rel="noreferrer"
+                style={{color:'rgba(255,255,255,0.25)'}}
+                onMouseEnter={e=>e.currentTarget.style.color='rgba(255,255,255,0.6)'}
+                onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,0.25)'}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836a9.59 9.59 0 0 1 2.504.337c1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.741 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+                </svg>
+              </a>
             </div>
           </div>
         </footer>

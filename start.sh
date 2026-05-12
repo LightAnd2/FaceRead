@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 
 echo "Starting Flask backend on :5001..."
 cd "$ROOT/backend"
-venv/bin/python app.py &
+python3 app.py &
 FLASK_PID=$!
 
 echo "Starting React frontend..."

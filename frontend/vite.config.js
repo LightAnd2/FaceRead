@@ -7,7 +7,7 @@ export default defineConfig({
     port: parseInt(process.env.PORT || "3000"),
     proxy: {
       "/analyze": "http://localhost:5001",
-      "/age-face": "http://localhost:5001",
+      "/classify-asl": "http://localhost:5001",
     },
   },
 });
