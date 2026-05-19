@@ -118,8 +118,8 @@ def classify_asl():
             confidence = round(float(np.max(proba)) * 100, 1)
 
         return jsonify({"letter": letter, "confidence": confidence})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        return jsonify({"error": "Prediction failed"}), 500
 
 
 if __name__ == "__main__":
