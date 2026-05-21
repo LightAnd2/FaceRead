@@ -913,7 +913,7 @@ export default function Landing() {
               <span className="text-[11px]" style={{color:'rgba(255,255,255,0.14)'}}>© {new Date().getFullYear()}</span>
             </div>
             <div className="flex items-center gap-6">
-              {[['FaceRead','#faceread'],['ASL','#asl']].map(([label,href])=>(
+              {[['FaceRead','#faceread'],['ASL','#asl'],['Privacy','/privacy']].map(([label,href])=>(
                 <a key={label} href={href} className="text-xs transition-colors"
                   style={{color:'rgba(255,255,255,0.25)'}}
                   onMouseEnter={e=>e.currentTarget.style.color='rgba(255,255,255,0.6)'}
